@@ -1,37 +1,76 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../stores/authStore'
 import { supabase } from '../lib/supabase'
-import { Shield, Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { Shield, Eye, EyeOff, ArrowLeft, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function LoginPage() {
-  const { signIn } = useAuthStore()
-  const navigate = useNavigate()
   const [view, setView] = useState('login') // 'login' | 'forgot'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleLogin = async (e) => {
     e.preventDefault()
+    setError('')
     setLoading(true)
-    const { data, error } = await signIn({ email, password })
-    setLoading(false)
-    if (error) { toast.error(error.message); return }
-    if (data) navigate('/dashboard')
+
+    const timeout = setTimeout(() => {
+      setLoading(false)
+      setError('Something went wrong, please try again.')
+    }, 10000)
+
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+      clearTimeout(timeout)
+
+      if (signInError) {
+        setError(signInError.message)
+        setLoading(false)
+        return
+      }
+
+      // Check role directly from profiles table
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .single()
+
+      if (profileError || !profile) {
+        await supabase.auth.signOut()
+        setError('Could not verify your account. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      if (profile.role !== 'admin' && profile.role !== 'super_admin') {
+        await supabase.auth.signOut()
+        setError('Access denied. Admins only.')
+        setLoading(false)
+        return
+      }
+
+      // Hard redirect so auth state fully re-initialises
+      window.location.href = '/dashboard'
+    } catch (err) {
+      clearTimeout(timeout)
+      setError('Something went wrong, please try again.')
+      setLoading(false)
+    }
   }
 
   const handleForgot = async (e) => {
     e.preventDefault()
-    if (!email.trim()) { toast.error('Enter your email address'); return }
+    setError('')
+    if (!email.trim()) { setError('Enter your email address'); return }
     setLoading(true)
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: 'https://tripplanner-admin.vercel.app/reset-password',
     })
     setLoading(false)
-    if (error) { toast.error(error.message); return }
+    if (resetError) { setError(resetError.message); return }
     toast.success('Password reset email sent — check your inbox')
     setView('login')
   }
@@ -55,6 +94,13 @@ export default function LoginPage() {
               <h2 className="text-lg font-bold text-slate-800 mb-1">Sign in</h2>
               <p className="text-slate-400 text-sm mb-6">Admin access only</p>
 
+              {error && (
+                <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-4">
+                  <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </div>
+              )}
+
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="label">Email</label>
@@ -63,7 +109,7 @@ export default function LoginPage() {
                     className="input"
                     placeholder="admin@example.com"
                     value={email}
-                    onChange={e => setEmail(e.target.value)}
+                    onChange={e => { setEmail(e.target.value); setError('') }}
                     required
                     autoComplete="email"
                   />
@@ -76,7 +122,7 @@ export default function LoginPage() {
                       className="input pr-10"
                       placeholder="••••••••"
                       value={password}
-                      onChange={e => setPassword(e.target.value)}
+                      onChange={e => { setPassword(e.target.value); setError('') }}
                       required
                       autoComplete="current-password"
                     />
@@ -95,7 +141,7 @@ export default function LoginPage() {
               </form>
 
               <button
-                onClick={() => setView('forgot')}
+                onClick={() => { setView('forgot'); setError('') }}
                 className="w-full text-center text-xs text-orange-500 hover:text-orange-600 font-medium mt-4 transition-colors"
               >
                 Forgot password?
@@ -104,13 +150,20 @@ export default function LoginPage() {
           ) : (
             <>
               <button
-                onClick={() => setView('login')}
+                onClick={() => { setView('login'); setError('') }}
                 className="flex items-center gap-1.5 text-slate-400 hover:text-slate-600 text-sm mb-4 transition-colors"
               >
                 <ArrowLeft size={14} /> Back to sign in
               </button>
               <h2 className="text-lg font-bold text-slate-800 mb-1">Reset password</h2>
               <p className="text-slate-400 text-sm mb-6">We'll email you a reset link</p>
+
+              {error && (
+                <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-4">
+                  <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </div>
+              )}
 
               <form onSubmit={handleForgot} className="space-y-4">
                 <div>
@@ -120,7 +173,7 @@ export default function LoginPage() {
                     className="input"
                     placeholder="admin@example.com"
                     value={email}
-                    onChange={e => setEmail(e.target.value)}
+                    onChange={e => { setEmail(e.target.value); setError('') }}
                     required
                     autoComplete="email"
                   />
