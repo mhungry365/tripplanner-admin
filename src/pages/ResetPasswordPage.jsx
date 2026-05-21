@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 export default function ResetPasswordPage() {
   const navigate = useNavigate()
   const [ready, setReady] = useState(false)
+  const [expired, setExpired] = useState(false)
   const [newPw, setNewPw] = useState('')
   const [confirmPw, setConfirmPw] = useState('')
   const [showPw, setShowPw] = useState(false)
@@ -14,15 +15,27 @@ export default function ResetPasswordPage() {
   const [done, setDone] = useState(false)
 
   useEffect(() => {
-    // Supabase embeds the session in the URL hash after a password reset redirect.
-    // onAuthStateChange fires with event PASSWORD_RECOVERY once it parses the hash.
+    // If there's no hash in the URL there's no token — redirect immediately.
+    if (!window.location.hash) {
+      navigate('/login', { replace: true })
+      return
+    }
+
+    // If PASSWORD_RECOVERY hasn't fired within 3s the token is expired/invalid.
+    const timeout = setTimeout(() => setExpired(true), 3000)
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
+        clearTimeout(timeout)
         setReady(true)
       }
     })
-    return () => subscription.unsubscribe()
-  }, [])
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
+  }, [navigate])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -54,6 +67,15 @@ export default function ResetPasswordPage() {
               <CheckCircle size={40} className="text-green-500 mx-auto mb-3" />
               <h2 className="text-lg font-bold text-slate-800 mb-1">Password updated!</h2>
               <p className="text-slate-400 text-sm">Redirecting you to sign in...</p>
+            </div>
+          ) : expired ? (
+            <div className="text-center py-4">
+              <div className="text-4xl mb-3">⏰</div>
+              <h2 className="text-lg font-bold text-slate-800 mb-1">Link expired</h2>
+              <p className="text-slate-400 text-sm mb-5">Reset link has expired. Please request a new one.</p>
+              <button onClick={() => navigate('/login')} className="btn-primary w-full">
+                Back to login
+              </button>
             </div>
           ) : !ready ? (
             <div className="text-center py-4">
