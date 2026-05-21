@@ -17,6 +17,7 @@ export default function UsersPage() {
       .from('profiles')
       .select('id,full_name,email,role,created_at,avatar_url')
       .order('created_at', { ascending: false })
+      .limit(50)
     setUsers(data || [])
     setLoading(false)
   }

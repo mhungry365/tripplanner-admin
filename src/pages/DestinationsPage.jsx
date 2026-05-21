@@ -15,7 +15,11 @@ export default function DestinationsPage() {
 
   const fetch = async () => {
     setLoading(true)
-    const { data } = await supabase.from('destinations').select('*').order('name')
+    const { data } = await supabase
+      .from('destinations')
+      .select('id,name,country,continent,description,image_url,budget_level,safety_rating,popularity_score')
+      .order('name')
+      .limit(100)
     setDestinations(data || [])
     setLoading(false)
   }
