@@ -22,7 +22,7 @@ export default function LoginPage() {
     }, 10000)
 
     try {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
       clearTimeout(timeout)
 
       if (signInError) {
@@ -31,28 +31,7 @@ export default function LoginPage() {
         return
       }
 
-      // Check role directly from profiles table
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', data.user.id)
-        .single()
-
-      if (profileError || !profile) {
-        await supabase.auth.signOut()
-        setError('Could not verify your account. Please try again.')
-        setLoading(false)
-        return
-      }
-
-      if (profile.role !== 'admin' && profile.role !== 'super_admin') {
-        await supabase.auth.signOut()
-        setError('Access denied. Admins only.')
-        setLoading(false)
-        return
-      }
-
-      // Hard redirect so auth state fully re-initialises
+      // Role check happens in the dashboard/ProtectedRoute
       window.location.href = '/dashboard'
     } catch (err) {
       clearTimeout(timeout)
