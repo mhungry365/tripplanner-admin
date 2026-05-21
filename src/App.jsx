@@ -20,14 +20,17 @@ function ProtectedRoute({ children }) {
   )
   if (!user) return <Navigate to="/login" replace />
   const role = profile?.role
-  if (role !== 'admin' && role !== 'super_admin') {
+  if (role !== 'super_admin') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="card max-w-md text-center">
           <div className="text-4xl mb-4">🚫</div>
           <h2 className="text-xl font-bold text-slate-800 mb-2">Access Denied</h2>
-          <p className="text-slate-500 mb-4">You don't have permission to access the admin portal.</p>
-          <button onClick={() => useAuthStore.getState().signOut()} className="btn-primary">
+          <p className="text-slate-500 mb-4">This portal is restricted to super administrators only.</p>
+          <button
+            onClick={async () => { await useAuthStore.getState().signOut(); window.location.href = '/login' }}
+            className="btn-primary"
+          >
             Sign Out
           </button>
         </div>
