@@ -1,23 +1,28 @@
-import { useEffect } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
-import AdminLayout from './components/layout/AdminLayout'
-import LoginPage from './pages/LoginPage'
-import ResetPasswordPage from './pages/ResetPasswordPage'
-import DashboardPage from './pages/DashboardPage'
-import UsersPage from './pages/UsersPage'
-import DestinationsPage from './pages/DestinationsPage'
-import BroadcastPage from './pages/BroadcastPage'
-import SupportPage from './pages/SupportPage'
-import SettingsPage from './pages/SettingsPage'
 
-function ProtectedRoute({ children }) {
-  const { user, profile, loading } = useAuthStore()
-  if (loading) return (
+const AdminLayout      = lazy(() => import('./components/layout/AdminLayout'))
+const LoginPage        = lazy(() => import('./pages/LoginPage'))
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
+const DashboardPage    = lazy(() => import('./pages/DashboardPage'))
+const UsersPage        = lazy(() => import('./pages/UsersPage'))
+const DestinationsPage = lazy(() => import('./pages/DestinationsPage'))
+const BroadcastPage    = lazy(() => import('./pages/BroadcastPage'))
+const SupportPage      = lazy(() => import('./pages/SupportPage'))
+const SettingsPage     = lazy(() => import('./pages/SettingsPage'))
+
+function Spinner() {
+  return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
     </div>
   )
+}
+
+function ProtectedRoute({ children }) {
+  const { user, profile, loading } = useAuthStore()
+  if (loading) return <Spinner />
   if (!user) return <Navigate to="/login" replace />
   const role = profile?.role
   if (role !== 'super_admin') {
@@ -45,23 +50,25 @@ export default function App() {
   useEffect(() => { initialize() }, [initialize])
 
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/" element={
-        <ProtectedRoute>
-          <AdminLayout />
-        </ProtectedRoute>
-      }>
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="users" element={<UsersPage />} />
-        <Route path="destinations" element={<DestinationsPage />} />
-        <Route path="broadcast" element={<BroadcastPage />} />
-        <Route path="support" element={<SupportPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-      </Route>
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
+    <Suspense fallback={<Spinner />}>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/" element={
+          <ProtectedRoute>
+            <AdminLayout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard"    element={<DashboardPage />} />
+          <Route path="users"        element={<UsersPage />} />
+          <Route path="destinations" element={<DestinationsPage />} />
+          <Route path="broadcast"    element={<BroadcastPage />} />
+          <Route path="support"      element={<SupportPage />} />
+          <Route path="settings"     element={<SettingsPage />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </Suspense>
   )
 }

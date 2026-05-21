@@ -8,15 +8,24 @@ export const useAuthStore = create((set, get) => ({
   initialized: false,
 
   initialize: async () => {
-    supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        set({ user: session.user })
-        await get().fetchProfile(session.user.id)
-      } else {
+    // Fast path: read cached session from localStorage — no network round-trip.
+    // This eliminates the spinner on repeat visits.
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user) {
+      set({ user: session.user })
+      await get().fetchProfile(session.user.id)
+    }
+    set({ loading: false, initialized: true })
+
+    // Live updates (token refresh, sign-out from another tab, OAuth redirect).
+    supabase.auth.onAuthStateChange(async (event, newSession) => {
+      if (event === 'SIGNED_OUT') {
         set({ user: null, profile: null })
+        return
       }
-      if (!get().initialized) {
-        set({ loading: false, initialized: true })
+      if (newSession?.user && newSession.user.id !== get().user?.id) {
+        set({ user: newSession.user })
+        await get().fetchProfile(newSession.user.id)
       }
     })
   },
