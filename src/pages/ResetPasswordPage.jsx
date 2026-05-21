@@ -4,6 +4,12 @@ import { supabase } from '../lib/supabase'
 import { Shield, Eye, EyeOff, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+function parseHash(hash) {
+  return Object.fromEntries(
+    hash.replace(/^#/, '').split('&').map(p => p.split('=').map(decodeURIComponent))
+  )
+}
+
 export default function ResetPasswordPage() {
   const navigate = useNavigate()
   const [ready, setReady] = useState(false)
@@ -15,26 +21,23 @@ export default function ResetPasswordPage() {
   const [done, setDone] = useState(false)
 
   useEffect(() => {
-    // If there's no hash in the URL there's no token — redirect immediately.
-    if (!window.location.hash) {
+    const hash = window.location.hash
+    if (!hash || !hash.includes('access_token')) {
       navigate('/login', { replace: true })
       return
     }
 
-    // If PASSWORD_RECOVERY hasn't fired within 3s the token is expired/invalid.
-    const timeout = setTimeout(() => setExpired(true), 3000)
+    const { access_token, refresh_token, type } = parseHash(hash)
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        clearTimeout(timeout)
-        setReady(true)
-      }
-    })
-
-    return () => {
-      subscription.unsubscribe()
-      clearTimeout(timeout)
+    if (type !== 'recovery' || !access_token || !refresh_token) {
+      setExpired(true)
+      return
     }
+
+    supabase.auth.setSession({ access_token, refresh_token }).then(({ error }) => {
+      if (error) setExpired(true)
+      else setReady(true)
+    })
   }, [navigate])
 
   const handleSubmit = async (e) => {
@@ -52,7 +55,6 @@ export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
       <div className="w-full max-w-sm">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 shadow-lg mb-4">
             <Shield size={28} className="text-white" />
