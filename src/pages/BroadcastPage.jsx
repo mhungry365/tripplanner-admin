@@ -41,9 +41,10 @@ export default function BroadcastPage() {
     setSending(true)
 
     // 1. Save broadcast record
+    const { data: { user: adminUser } } = await supabase.auth.getUser()
     const { data: broadcast, error: bError } = await supabase
       .from('broadcast_messages')
-      .insert({ type, title: title.trim(), message: body.trim(), target: 'all', sent_at: new Date().toISOString() })
+      .insert({ admin_id: adminUser.id, type, title: title.trim(), message: body.trim(), target: 'all', sent_at: new Date().toISOString() })
       .select('id')
       .single()
 
