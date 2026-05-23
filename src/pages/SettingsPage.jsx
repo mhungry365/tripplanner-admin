@@ -116,8 +116,8 @@ export default function SettingsPage() {
               <h2 className="font-semibold text-slate-700 flex items-center gap-2"><Globe size={16} className="text-orange-500" /> Site Settings</h2>
               <div className="space-y-4">
                 {[
-                  { label: 'App Name', value: 'HolidaysDairy', desc: 'Displayed in the header and emails' },
-                  { label: 'Support Email', value: 'support@holidaysdairy.app', desc: 'Receives user support messages' },
+                  { label: 'App Name', value: 'Holidater', desc: 'Displayed in the header and emails' },
+                  { label: 'Support Email', value: 'support@holidater.app', desc: 'Receives user support messages' },
                   { label: 'Max Trips Per User', value: '20', desc: 'Free tier limit' },
                 ].map(({ label, value, desc }) => (
                   <div key={label}>
