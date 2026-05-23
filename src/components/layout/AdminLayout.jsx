@@ -38,7 +38,7 @@ export default function AdminLayout() {
           </div>
           {sidebarOpen && (
             <div>
-              <div className="text-sm font-bold text-slate-800">TripPlanner</div>
+              <div className="text-sm font-bold text-slate-800">HolidaysDairy</div>
               <div className="text-xs text-orange-500 font-semibold">Admin Portal</div>
             </div>
           )}
@@ -95,7 +95,7 @@ export default function AdminLayout() {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 bg-white border-b border-slate-100 flex items-center px-6 gap-4">
-          <h1 className="text-slate-400 text-sm">TripPlanner Admin</h1>
+          <h1 className="text-slate-400 text-sm">HolidaysDairy Admin</h1>
           <div className="ml-auto flex items-center gap-3">
             <span className="text-xs bg-orange-100 text-orange-600 font-semibold px-2.5 py-1 rounded-full capitalize">
               {profile?.role?.replace('_', ' ') || 'admin'}
