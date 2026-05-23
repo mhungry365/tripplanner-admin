@@ -4,22 +4,22 @@ import { supabase } from '../lib/supabase'
 import toast from 'react-hot-toast'
 
 const TYPES = [
-  { id: 'push', label: 'Push Notification', icon: Bell, desc: 'Send to all app users' },
-  { id: 'email', label: 'Email Blast', icon: Mail, desc: 'Send to all registered emails' },
-  { id: 'in_app', label: 'In-App Banner', icon: Megaphone, desc: 'Display banner in the app' },
+  { id: 'push',   label: 'Push Notification', icon: Bell,     desc: 'Send to all app users' },
+  { id: 'email',  label: 'Email Blast',        icon: Mail,     desc: 'Send to all registered emails' },
+  { id: 'in_app', label: 'In-App Banner',      icon: Megaphone,desc: 'Display banner in the app' },
 ]
 
 const typeColor = (t) =>
-  t === 'push' ? 'bg-blue-100 text-blue-600'
+  t === 'push'  ? 'bg-blue-100 text-blue-600'
   : t === 'email' ? 'bg-green-100 text-green-600'
   : 'bg-orange-100 text-orange-600'
 
 export default function BroadcastPage() {
-  const [type, setType] = useState('push')
-  const [title, setTitle] = useState('')
-  const [body, setBody] = useState('')
-  const [sending, setSending] = useState(false)
-  const [broadcasts, setBroadcasts] = useState([])
+  const [type, setType]               = useState('push')
+  const [title, setTitle]             = useState('')
+  const [body, setBody]               = useState('')
+  const [sending, setSending]         = useState(false)
+  const [broadcasts, setBroadcasts]   = useState([])
   const [loadingHistory, setLoadingHistory] = useState(true)
 
   const fetchHistory = async () => {
@@ -39,20 +39,52 @@ export default function BroadcastPage() {
     e.preventDefault()
     if (!title.trim() || !body.trim()) { toast.error('Title and message are required'); return }
     setSending(true)
-    const { error } = await supabase.from('broadcast_messages').insert({
-      type,
-      title: title.trim(),
-      body: body.trim(),
-      sent_at: new Date().toISOString(),
-    })
-    if (error) {
-      toast.error('Failed to send: ' + error.message)
-    } else {
-      toast.success('Broadcast sent successfully!')
-      setTitle('')
-      setBody('')
-      fetchHistory()
+
+    // 1. Save broadcast record
+    const { data: broadcast, error: bError } = await supabase
+      .from('broadcast_messages')
+      .insert({ type, title: title.trim(), message: body.trim(), target: 'all', sent_at: new Date().toISOString() })
+      .select('id')
+      .single()
+
+    if (bError) {
+      toast.error('Failed to save broadcast: ' + bError.message)
+      setSending(false)
+      return
     }
+
+    // 2. Fetch all user IDs
+    const { data: users, error: uError } = await supabase
+      .from('profiles')
+      .select('id')
+
+    if (uError || !users?.length) {
+      toast.success('Broadcast saved (no users to notify)')
+      setTitle(''); setBody('')
+      fetchHistory()
+      setSending(false)
+      return
+    }
+
+    // 3. Insert one notification per user
+    const notifRows = users.map(u => ({
+      user_id: u.id,
+      type: 'system',
+      title: title.trim(),
+      message: body.trim(),
+      data: { broadcast_id: broadcast.id },
+      is_read: false,
+    }))
+
+    const { error: nError } = await supabase.from('notifications').insert(notifRows)
+    if (nError) {
+      toast.error('Broadcast saved but notifications failed: ' + nError.message)
+    } else {
+      toast.success(`Broadcast sent to ${users.length} user${users.length !== 1 ? 's' : ''}`)
+    }
+
+    setTitle(''); setBody('')
+    fetchHistory()
     setSending(false)
   }
 
@@ -72,15 +104,12 @@ export default function BroadcastPage() {
 
           <div className="grid grid-cols-3 gap-2">
             {TYPES.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => setType(id)}
+              <button key={id} onClick={() => setType(id)}
                 className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-xs font-medium transition-all ${
                   type === id
                     ? 'border-orange-300 bg-orange-50 text-orange-600'
                     : 'border-slate-200 text-slate-500 hover:border-slate-300'
-                }`}
-              >
+                }`}>
                 <Icon size={16} />
                 {label.split(' ')[0]}
               </button>
@@ -90,28 +119,18 @@ export default function BroadcastPage() {
           <form onSubmit={handleSend} className="space-y-4">
             <div>
               <label className="label">Title</label>
-              <input
-                className="input"
-                placeholder="Announcement title..."
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-              />
+              <input className="input" placeholder="Announcement title..."
+                value={title} onChange={e => setTitle(e.target.value)} />
             </div>
             <div>
               <label className="label">Message</label>
-              <textarea
-                className="input resize-none"
-                rows={5}
+              <textarea className="input resize-none" rows={5}
                 placeholder="Write your message to users..."
-                value={body}
-                onChange={e => setBody(e.target.value)}
-              />
+                value={body} onChange={e => setBody(e.target.value)} />
             </div>
-
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-slate-500">
-                <Users size={14} />
-                <span>All users</span>
+                <Users size={14} /> <span>All users</span>
               </div>
               <button type="submit" className="btn-primary flex items-center gap-2" disabled={sending}>
                 <Send size={14} />
@@ -127,9 +146,7 @@ export default function BroadcastPage() {
 
           {loadingHistory ? (
             <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-14 bg-slate-100 rounded-xl animate-pulse" />
-              ))}
+              {[...Array(3)].map((_, i) => <div key={i} className="h-14 bg-slate-100 rounded-xl animate-pulse" />)}
             </div>
           ) : broadcasts.length === 0 ? (
             <div className="text-center py-10">
@@ -146,8 +163,11 @@ export default function BroadcastPage() {
                     <div className="text-sm font-medium text-slate-700 truncate">{b.title}</div>
                     <div className="text-xs text-slate-400 mt-0.5">
                       {b.sent_at ? new Date(b.sent_at).toLocaleDateString() : '—'}
-                      {b.read_count != null && ` · ${b.read_count.toLocaleString()} reads`}
+                      {b.recipient_count != null && ` · ${b.recipient_count.toLocaleString()} users`}
                     </div>
+                    {b.message && (
+                      <div className="text-xs text-slate-500 mt-1 line-clamp-1">{b.message}</div>
+                    )}
                   </div>
                 </div>
               ))}
