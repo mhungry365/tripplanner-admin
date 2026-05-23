@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Megaphone, Send, Users, Bell, Mail } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 import toast from 'react-hot-toast'
 
 const TYPES = [
@@ -8,30 +9,52 @@ const TYPES = [
   { id: 'in_app', label: 'In-App Banner', icon: Megaphone, desc: 'Display banner in the app' },
 ]
 
-const mockHistory = [
-  { id: 1, type: 'push', title: 'New destinations available!', sent: '2024-01-15', recipients: 2341 },
-  { id: 2, type: 'email', title: 'January travel deals', sent: '2024-01-10', recipients: 1892 },
-  { id: 3, type: 'in_app', title: 'App update v2.0', sent: '2024-01-05', recipients: 3100 },
-]
+const typeColor = (t) =>
+  t === 'push' ? 'bg-blue-100 text-blue-600'
+  : t === 'email' ? 'bg-green-100 text-green-600'
+  : 'bg-orange-100 text-orange-600'
 
 export default function BroadcastPage() {
   const [type, setType] = useState('push')
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [sending, setSending] = useState(false)
+  const [broadcasts, setBroadcasts] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(true)
+
+  const fetchHistory = async () => {
+    setLoadingHistory(true)
+    const { data } = await supabase
+      .from('broadcast_messages')
+      .select('*')
+      .order('sent_at', { ascending: false })
+      .limit(20)
+    setBroadcasts(data || [])
+    setLoadingHistory(false)
+  }
+
+  useEffect(() => { fetchHistory() }, [])
 
   const handleSend = async (e) => {
     e.preventDefault()
     if (!title.trim() || !body.trim()) { toast.error('Title and message are required'); return }
     setSending(true)
-    await new Promise(r => setTimeout(r, 1200))
-    toast.success('Broadcast sent successfully!')
-    setTitle('')
-    setBody('')
+    const { error } = await supabase.from('broadcast_messages').insert({
+      type,
+      title: title.trim(),
+      body: body.trim(),
+      sent_at: new Date().toISOString(),
+    })
+    if (error) {
+      toast.error('Failed to send: ' + error.message)
+    } else {
+      toast.success('Broadcast sent successfully!')
+      setTitle('')
+      setBody('')
+      fetchHistory()
+    }
     setSending(false)
   }
-
-  const typeColor = (t) => t === 'push' ? 'bg-blue-100 text-blue-600' : t === 'email' ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'
 
   return (
     <div className="space-y-6">
@@ -47,7 +70,6 @@ export default function BroadcastPage() {
             <Send size={16} className="text-orange-500" /> Compose Broadcast
           </h2>
 
-          {/* Type selector */}
           <div className="grid grid-cols-3 gap-2">
             {TYPES.map(({ id, label, icon: Icon }) => (
               <button
@@ -102,17 +124,35 @@ export default function BroadcastPage() {
         {/* History */}
         <div className="card space-y-4">
           <h2 className="font-semibold text-slate-700">Broadcast History</h2>
-          <div className="space-y-3">
-            {mockHistory.map(h => (
-              <div key={h.id} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <span className={`badge text-xs mt-0.5 ${typeColor(h.type)}`}>{h.type}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-slate-700 truncate">{h.title}</div>
-                  <div className="text-xs text-slate-400 mt-0.5">{h.sent} · {h.recipients.toLocaleString()} recipients</div>
+
+          {loadingHistory ? (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-14 bg-slate-100 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : broadcasts.length === 0 ? (
+            <div className="text-center py-10">
+              <Megaphone size={32} className="text-slate-300 mx-auto mb-3" />
+              <p className="text-slate-500 text-sm font-medium">No broadcasts sent yet.</p>
+              <p className="text-slate-400 text-xs mt-1">Send your first message above.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {broadcasts.map(b => (
+                <div key={b.id} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className={`badge text-xs mt-0.5 ${typeColor(b.type)}`}>{b.type}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-slate-700 truncate">{b.title}</div>
+                    <div className="text-xs text-slate-400 mt-0.5">
+                      {b.sent_at ? new Date(b.sent_at).toLocaleDateString() : '—'}
+                      {b.read_count != null && ` · ${b.read_count.toLocaleString()} reads`}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
