@@ -30,12 +30,23 @@ export default function SupportPage() {
 
   const fetchTickets = async () => {
     setLoading(true)
-    const { data, error } = await supabase
+    const { data: tickets, error } = await supabase
       .from('support_tickets')
-      .select('*, profiles(full_name, email, avatar_url)')
+      .select('*')
       .order('created_at', { ascending: false })
-    if (error) toast.error('Failed to load tickets: ' + error.message)
-    setTickets(data || [])
+    if (error) { toast.error('Failed to load tickets: ' + error.message); setLoading(false); return }
+
+    if (tickets?.length) {
+      const userIds = [...new Set(tickets.map(t => t.user_id))]
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, avatar_url')
+        .in('id', userIds)
+      const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]))
+      setTickets(tickets.map(t => ({ ...t, profile: profileMap[t.user_id] || null })))
+    } else {
+      setTickets([])
+    }
     setLoading(false)
   }
 
@@ -130,8 +141,8 @@ export default function SupportPage() {
             filtered.map(t => {
               const cfg = statusConfig[t.status] || statusConfig.open
               const Icon = cfg.icon
-              const userName = t.profiles?.full_name || 'Unknown User'
-              const userEmail = t.profiles?.email || ''
+              const userName = t.profile?.full_name || 'Unknown User'
+              const userEmail = t.profile?.email || ''
               return (
                 <div
                   key={t.id}
@@ -166,7 +177,7 @@ export default function SupportPage() {
               <div>
                 <h3 className="font-bold text-slate-800">{selectedTicket.subject}</h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  {selectedTicket.profiles?.full_name || 'Unknown'} · {selectedTicket.profiles?.email || ''}
+                  {selectedTicket.profile?.full_name || 'Unknown'} · {selectedTicket.profile?.email || ''}
                 </p>
                 <p className="text-[10px] text-slate-300 mt-0.5">{timeAgo(selectedTicket.created_at)}</p>
               </div>
