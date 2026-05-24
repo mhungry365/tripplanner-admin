@@ -11,6 +11,7 @@ const DestinationsPage = lazy(() => import('./pages/DestinationsPage'))
 const BroadcastPage    = lazy(() => import('./pages/BroadcastPage'))
 const SupportPage      = lazy(() => import('./pages/SupportPage'))
 const SettingsPage     = lazy(() => import('./pages/SettingsPage'))
+const DealsPage        = lazy(() => import('./pages/DealsPage'))
 
 function Spinner() {
   return (
@@ -65,6 +66,7 @@ export default function App() {
           <Route path="destinations" element={<DestinationsPage />} />
           <Route path="broadcast"    element={<BroadcastPage />} />
           <Route path="support"      element={<SupportPage />} />
+          <Route path="deals"        element={<DealsPage />} />
           <Route path="settings"     element={<SettingsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

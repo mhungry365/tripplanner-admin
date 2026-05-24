@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
 import {
   LayoutDashboard, Users, MapPin, Megaphone,
-  HeadphonesIcon, Settings, LogOut, Shield, Menu, X
+  HeadphonesIcon, Settings, LogOut, Shield, Menu, X, Tag
 } from 'lucide-react'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
@@ -13,6 +13,7 @@ const navItems = [
   { path: '/destinations', label: 'Destinations', icon: MapPin },
   { path: '/broadcast',    label: 'Broadcast',    icon: Megaphone },
   { path: '/support',      label: 'Support',      icon: HeadphonesIcon },
+  { path: '/deals',        label: 'Deals',        icon: Tag },
   { path: '/settings',     label: 'Settings',     icon: Settings },
 ]
 
