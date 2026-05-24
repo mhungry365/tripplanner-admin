@@ -11,7 +11,7 @@ export default function LoginPage() {
     setLoading(true)
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: 'https://tripplanner-admin.vercel.app/dashboard' },
+      options: { redirectTo: 'https://holidater-admin.vercel.app/dashboard' },
     })
     if (oauthError) {
       setError(oauthError.message)
