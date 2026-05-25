@@ -11,7 +11,7 @@ export default function LoginPage() {
     setLoading(true)
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: 'https://holidater-admin.vercel.app/dashboard' },
+      options: { redirectTo: 'https://wanderwall-admin.vercel.app/dashboard' },
     })
     if (oauthError) {
       setError(oauthError.message)
@@ -28,7 +28,7 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 shadow-lg mb-4">
             <Shield size={28} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Holidater</h1>
+          <h1 className="text-2xl font-bold text-white">Wanderwall</h1>
           <p className="text-slate-400 text-sm mt-1">Admin Portal</p>
         </div>
 
